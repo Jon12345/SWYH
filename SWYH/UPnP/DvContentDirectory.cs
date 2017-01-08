@@ -23,14 +23,16 @@
 
 namespace SWYH.UPnP
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Text;
-    using System.Web;
-    using System.Xml;
     using OpenSource.UPnP;
     using OpenSource.UPnP.AV.CdsMetadata;
     using SWYH.Audio;
+    using System;
+    using System.Collections.Generic;
+    using System.Net;
+    using System.Net.Sockets;
+    using System.Text;
+    using System.Web;
+    using System.Xml;
 
     /// <summary>
     /// Transparent DeviceSide UPnP Service
@@ -1300,26 +1302,32 @@ namespace SWYH.UPnP
             //<upnp:class>object.item.audioItem.musicTrack</upnp:class>
             //</item>
             StringBuilder ressources = new StringBuilder();
-            foreach (var item in this.GetUPnPService().ParentDevice.LocalIPEndPoints)
+            List<IPEndPoint> endPointsList = new List<IPEndPoint>();
+            try
             {
-                if (item.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork && !item.ToString().StartsWith("127.0.0.1"))
+                endPointsList.Add(this.GetReceiver());
+            }
+            catch (NullReferenceException)
+            {
+                endPointsList.AddRange(this.GetUPnPService().ParentDevice.LocalIPEndPoints);
+            }
+            foreach (IPEndPoint ip in endPointsList)
+            {
+                if (ip.AddressFamily == AddressFamily.InterNetwork && !ip.ToString().StartsWith("127.0.0.1"))
                 {
-                    string uri = "http://" + item.ToString() + "/stream/" + resFileName;
-                    //sb.Append("<res protocolInfo=\"" + protocolInfo + "\">" + HttpUtility.HtmlEncode(uri) + "</res>");
-                    //sb.Append("<res bitsPerSample=\"" + bitsPerSample + "\" protocolInfo=\"" + protocolInfo + "\" nrAudioChannels=\"" + nrAudioChannels + "\" bitrate=\"" + bitrate + "\" sampleFrequency=\"" + sampleFrequency + "\">" + HttpUtility.HtmlEncode(uri) + "</res>");
-                    ressources.Append("<res bitsPerSample=\"" + bitsPerSample + "\" protocolInfo=\"" + protocolInfo + "\" duration=\"" + duration + "\" nrAudioChannels=\"" + nrAudioChannels + "\" bitrate=\"" + bitrate + "\" sampleFrequency=\"" + sampleFrequency + "\">" + HttpUtility.HtmlEncode(uri) + "</res>");
+                    ressources.Append("<res bitsPerSample=\"" + bitsPerSample + "\" protocolInfo=\"" + protocolInfo + "\" duration=\"" + duration + "\" nrAudioChannels=\"" + nrAudioChannels + "\" bitrate=\"" + bitrate + "\" sampleFrequency=\"" + sampleFrequency + "\">" +
+                                            HttpUtility.HtmlEncode("http://" + ip.ToString() + "/stream/" + resFileName) +
+                                       "</res>");
                 }
             }
-            string retVal =
-            "<item id=\"" + id + "\" parentID=\"" + parentID + "\" restricted=\"" + restricted + "\">" +
-                "<dc:title>" + HttpUtility.HtmlEncode(title) + "</dc:title>" +
-                ressources.ToString() +
-                "<upnp:artist>" + artist + "</upnp:artist>" +
-                "<upnp:album>" + album + "</upnp:album>" +
-                "<upnp:genre>" + genre + "</upnp:genre>" +
-                "<upnp:class>" + upnpClass + "</upnp:class>" +
-            "</item>";
-            return retVal;
+            return "<item id=\"" + id + "\" parentID=\"" + parentID + "\" restricted=\"" + restricted + "\">" +
+                        "<dc:title>" + HttpUtility.HtmlEncode(title) + "</dc:title>" +
+                        "<upnp:artist>" + artist + "</upnp:artist>" +
+                        ressources.ToString() +
+                        "<upnp:album>" + album + "</upnp:album>" +
+                        "<upnp:genre>" + genre + "</upnp:genre>" +
+                        "<upnp:class>" + upnpClass + "</upnp:class>" +
+                    "</item>";
         }
 
         #region Not Implemented
